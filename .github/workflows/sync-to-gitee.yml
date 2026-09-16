@@ -1,0 +1,75 @@
+# GitHub Actions 工作流：把本仓库完整镜像到 Gitee，只作备份。
+# GitHub 是唯一开发源；Gitee 不要直接推代码。
+#
+# 使用前在本仓库 Settings → Secrets and variables → Actions 里添加：
+#   GITEE_TOKEN = Gitee 私人令牌（需要仓库推送权限）
+# 令牌在 Gitee：设置 → 私人令牌 https://gitee.com/profile/personal_access_tokens
+
+# 出现在 Actions 页的工作流名称
+name: Sync to Gitee
+
+# 什么时候跑这个工作流
+on:
+  # 任何分支、tag 的 push（包括第一次把本文件推上 main）
+  push:
+  # 删除分支或 tag 时也跑，这样 --mirror 会把 Gitee 上对应引用删掉
+  delete:
+  # 允许在 Actions 页面点 “Run workflow” 手动同步
+  workflow_dispatch:
+
+# 同一时刻只跑一个同步，避免两次 mirror 互相覆盖。
+# 新的运行会取消还在跑的旧运行。
+concurrency:
+  group: sync-to-gitee
+  cancel-in-progress: true
+
+jobs:
+  # 一个 job 就是一组在同一台机器上顺序执行的步骤
+  sync:
+    # GitHub 托管的 Ubuntu 虚拟机，每次运行都是干净环境
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Mirror GitHub to Gitee
+        env:
+          # secrets.XXX 来自仓库 Secret，日志里会被自动打码
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          # 备份目标。HTTPS 地址本身不含令牌
+          GITEE_REPO: https://gitee.com/lovebuding/springhere.git
+        run: |
+          # -e 任一命令失败立刻退出
+          # -u 使用未定义变量则失败（防止令牌空了还继续推）
+          # -o pipefail 管道中任一失败也算失败
+          set -euo pipefail
+
+          if [ -z "${GITEE_TOKEN:-}" ]; then
+            echo "缺少 GitHub Secret: GITEE_TOKEN（Gitee 私人令牌）"
+            exit 1
+          fi
+
+          # GITHUB_REPOSITORY 由 Actions 注入，形如 owner/repo。
+          # --mirror 克隆出“裸仓库”：包含全部分支、tag 和原始 commit SHA，
+          # 不会 checkout 工作区，也不会改写 commit。
+          git clone --mirror "https://github.com/${GITHUB_REPOSITORY}.git" mirror.git
+          cd mirror.git
+
+          # 推 Gitee 时把 https://gitee.com/ 自动换成带令牌的地址。
+          # 用户名用 oauth2，密码就是私人令牌（Gitee HTTPS 的约定）。
+          # 这样 git remote 里仍是不含令牌的 GITEE_REPO，减少泄露。
+          git config --local "url.https://oauth2:${GITEE_TOKEN}@gitee.com/.insteadOf" "https://gitee.com/"
+
+          git remote add gitee "$GITEE_REPO"
+
+          # --mirror：按 GitHub 的引用原样推到 Gitee（对象 SHA 不变），
+          # 并删除 Gitee 上多出来的分支/tag。Gitee 必须是可覆盖的备份仓。
+          git push --mirror gitee
+
+          # 两边默认分支当前 commit 必须相同，否则不能当备份。
+          github_sha="$(git rev-parse HEAD)"
+          gitee_sha="$(git ls-remote gitee HEAD | awk '{print $1}')"
+          echo "GitHub HEAD=$github_sha"
+          echo "Gitee  HEAD=$gitee_sha"
+          if [ "$github_sha" != "$gitee_sha" ]; then
+            echo "同步后 SHA 不一致，Gitee 不能当备份用"
+            exit 1
+          fi
