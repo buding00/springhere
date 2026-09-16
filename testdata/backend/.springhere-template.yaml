@@ -1,0 +1,16 @@
+schema_version: 1
+component: backend
+cli_constraint: ">=0.1.0 <1.0.0"
+payload:
+  include:
+    - cmd
+    - internal
+    - go.mod
+    - application.yaml
+transforms:
+  - kind: go_module
+    value_from: backend_module
+  - kind: yaml_scalar
+    path: application.yaml
+    key: app.name
+    value_from: project_name

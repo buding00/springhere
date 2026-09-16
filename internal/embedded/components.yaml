@@ -1,0 +1,48 @@
+schema_version: 1
+
+# GitHub 是开发源，Gitee 是同一 commit 的备份镜像（由 GitHub Actions --mirror 同步）。
+# commit 为空表示使用 ref 当前 tip，生成时把实际 SHA 写入 .springhere.yaml。
+
+backends:
+  - id: gin
+    name: "Gin (Go)"
+    language: go
+    sources:
+      github:
+        url: https://github.com/buding00/springhere-gin-server.git
+        ref: main
+        commit: ""
+      gitee:
+        url: https://gitee.com/lovebuding/springhere-gin-server.git
+        ref: main
+        commit: ""
+    requirements:
+      go: ">=1.26"
+      postgres: ">=14"
+      redis: ">=7"
+
+frontends:
+  - id: react
+    name: "React + Ant Design"
+    language: typescript
+    sources:
+      github:
+        url: https://github.com/buding00/springhere-react-admin.git
+        ref: main
+        commit: ""
+      gitee:
+        url: https://gitee.com/lovebuding/springhere-react-admin.git
+        ref: main
+        commit: ""
+    requirements:
+      node: ">=22"
+      pnpm: ">=9"
+
+combinations:
+  - id: gin-react-admin
+    backend: gin
+    frontend: react
+    tested: true
+    auth_mode: refresh-cookie
+    api_base_path: /api
+    openapi_sha256: ""

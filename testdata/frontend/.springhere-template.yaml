@@ -1,0 +1,12 @@
+schema_version: 1
+component: frontend
+cli_constraint: ">=0.1.0 <1.0.0"
+payload:
+  include:
+    - src
+    - package.json
+transforms:
+  - kind: json_string
+    path: package.json
+    key: name
+    value_from: frontend_package_name
