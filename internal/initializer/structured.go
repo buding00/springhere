@@ -52,6 +52,10 @@ func applyTransforms(root string, transforms []contract.Transform, v values) err
 			if err := setYAMLScalar(filepath.Join(root, t.Path), t.Key, val); err != nil {
 				return err
 			}
+		case "deploy_stack":
+			if err := rewriteDeployStack(root, t, val); err != nil {
+				return err
+			}
 		default:
 			return clierr.Contract("未知 transform kind: "+t.Kind, nil)
 		}

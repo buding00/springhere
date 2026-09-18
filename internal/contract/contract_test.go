@@ -31,6 +31,44 @@ payload:
 	}
 }
 
+func TestParseDeployStackRequiresFrom(t *testing.T) {
+	t.Parallel()
+	_, err := Parse([]byte(`
+schema_version: 1
+component: backend
+payload:
+  include: [deploy]
+transforms:
+  - kind: deploy_stack
+    path: deploy
+    value_from: project_name
+`))
+	if err == nil {
+		t.Fatal("expected deploy_stack without from to fail")
+	}
+}
+
+func TestParseDeployStackOK(t *testing.T) {
+	t.Parallel()
+	c, err := Parse([]byte(`
+schema_version: 1
+component: backend
+payload:
+  include: [deploy]
+transforms:
+  - kind: deploy_stack
+    path: deploy
+    from: springhere
+    value_from: project_name
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Transforms[0].From != "springhere" {
+		t.Fatalf("from=%q", c.Transforms[0].From)
+	}
+}
+
 func TestParseOK(t *testing.T) {
 	t.Parallel()
 	c, err := Parse([]byte(`

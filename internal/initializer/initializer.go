@@ -165,6 +165,14 @@ func Run(ctx context.Context, cfg Config) (*Result, error) {
 	if err := applyTransforms(frontendRoot, fContract.Transforms, vals); err != nil {
 		return nil, err
 	}
+	bFiles, err = listRelFiles(backendRoot)
+	if err != nil {
+		return nil, err
+	}
+	fFiles, err = listRelFiles(frontendRoot)
+	if err != nil {
+		return nil, err
+	}
 	if sourceModule != "" && sourceModule != cfg.Module {
 		if err := leftoverGoModule(backendRoot, sourceModule); err != nil {
 			return nil, err
@@ -217,13 +225,16 @@ func Run(ctx context.Context, cfg Config) (*Result, error) {
 	}
 
 	if !cfg.NoGit {
-		if err := gitInit(cfg.TargetDir); err != nil {
-			fmt.Fprintf(cfg.Stdout, "警告：git init 失败（项目已生成）: %v\n", err)
+		for _, name := range []string{"backend", "frontend"} {
+			dir := filepath.Join(cfg.TargetDir, name)
+			if err := gitInit(dir); err != nil {
+				fmt.Fprintf(cfg.Stdout, "警告：%s git init 失败（项目已生成）: %v\n", name, err)
+			}
 		}
 	}
 
 	fmt.Fprintf(cfg.Stdout, "已创建 %s（%d 个文件）\n", cfg.TargetDir, len(all))
-	fmt.Fprintf(cfg.Stdout, "\n下一步：\n  cd %s\n  make help\n", cfg.TargetDir)
+	fmt.Fprintf(cfg.Stdout, "\n下一步：\n  cd %s\n  查看 README.md\n", cfg.TargetDir)
 	return res, nil
 }
 

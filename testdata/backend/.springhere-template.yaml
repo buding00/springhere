@@ -5,6 +5,7 @@ payload:
   include:
     - cmd
     - internal
+    - deploy
     - go.mod
     - application.yaml
 transforms:
@@ -13,4 +14,8 @@ transforms:
   - kind: yaml_scalar
     path: application.yaml
     key: app.name
+    value_from: project_name
+  - kind: deploy_stack
+    path: deploy
+    from: springhere
     value_from: project_name

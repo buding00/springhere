@@ -32,6 +32,7 @@ type Transform struct {
 	Kind      string `yaml:"kind"`
 	Path      string `yaml:"path"`
 	Key       string `yaml:"key"`
+	From      string `yaml:"from"`
 	ValueFrom string `yaml:"value_from"`
 }
 
@@ -81,15 +82,20 @@ func (c *Contract) validate() error {
 	}
 	for _, t := range c.Transforms {
 		switch t.Kind {
-		case "go_module", "json_string", "yaml_scalar":
+		case "go_module", "json_string", "yaml_scalar", "deploy_stack":
 		default:
-			return clierr.Contract("未知 transform kind: "+t.Kind+"（第一版只支持 go_module、json_string、yaml_scalar）", nil)
+			return clierr.Contract("未知 transform kind: "+t.Kind+"（支持 go_module、json_string、yaml_scalar、deploy_stack）", nil)
 		}
 		if t.Kind != "go_module" && strings.TrimSpace(t.Path) == "" {
 			return clierr.Contract("transform "+t.Kind+" 缺少 path", nil)
 		}
 		if (t.Kind == "json_string" || t.Kind == "yaml_scalar") && t.Key == "" {
 			return clierr.Contract("transform "+t.Kind+" 缺少 key", nil)
+		}
+		if t.Kind == "deploy_stack" {
+			if err := checkDirName(t.From); err != nil {
+				return clierr.Contract("transform deploy_stack 的 from 非法: "+t.From, err)
+			}
 		}
 		if t.ValueFrom == "" {
 			return clierr.Contract("transform "+t.Kind+" 缺少 value_from", nil)
@@ -108,6 +114,17 @@ func checkInclude(p string) error {
 	}
 	if strings.ContainsAny(p, `\:`) {
 		return clierr.Contract("payload.include 含非法字符: "+p, nil)
+	}
+	return nil
+}
+
+func checkDirName(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" || name == "." || name == ".." {
+		return fmt.Errorf("不能为空或 . / ..")
+	}
+	if strings.ContainsAny(name, `/\:`) {
+		return fmt.Errorf("不能含路径分隔符")
 	}
 	return nil
 }

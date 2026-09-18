@@ -5,10 +5,11 @@
 ## 目录
 
 ```text
-backend/      Gin 服务
+backend/      Gin 服务，PostgreSQL / Redis / Nginx 编排在 backend/deploy/__PROJECT_NAME__/
 frontend/     React 管理端
-deployments/  PostgreSQL、Redis、Nginx
 ```
+
+`backend/` 与 `frontend/` 各自是独立的 Git 仓库。根目录没有 `.git`。
 
 ## 前置条件
 
@@ -20,38 +21,32 @@ deployments/  PostgreSQL、Redis、Nginx
 ## 本地开发
 
 ```bash
-# 1. 启动 PostgreSQL 和 Redis，并整理 backend 依赖（go mod tidy）
-make up
+# 1. 启动 PostgreSQL 和 Redis
+docker compose -f backend/deploy/__PROJECT_NAME__/docker-compose.yaml up -d
 
-# 2. 后端：迁移并启动
-make migrate
-make backend
+# 2. 后端：整理依赖、迁移并启动
+cd backend
+go mod tidy
+go run ./cmd/migrate -action up
+go run ./cmd/server -config application.yaml
 
 # 3. 另开终端启动前端（Vite 把 /api 代理到 localhost:8080）
-make frontend
+cd frontend
+pnpm install
+pnpm dev
 ```
 
 前端默认 http://localhost:5173。使用后端仓库里已有的管理账户登录。
 
-模板来自 GitHub 或 Gitee 镜像（同一 commit）。本项目生成后不再依赖 SpringHere CLI。
-
-## 常用命令
-
-```bash
-make help
-make up          # 启动 Postgres + Redis，并 go mod tidy
-make down        # 停止依赖
-make migrate     # 执行数据库迁移
-make backend     # 启动 Gin
-make frontend    # 启动 React
-```
-
-后端 module：`__BACKEND_MODULE__`  
-前端 package：`__FRONTEND_PACKAGE__`
+模板来自 GitHub 或 Gitee 镜像（同一提交）。本项目生成后不再依赖 SpringHere CLI。
 
 ## 配置
 
 - 后端配置：`backend/application.yaml`，也可用环境变量覆盖（见 `backend/.env.example`）
 - 前端代理：`frontend/.env.example` 中的 `VITE_API_PROXY_TARGET`
+- Compose / Nginx：`backend/deploy/__PROJECT_NAME__/`
 
 不要把密钥提交进 Git。生产环境必须替换 JWT Secret，并打开 Refresh Cookie 的 `Secure`。
+
+后端 module：`__BACKEND_MODULE__`  
+前端 package：`__FRONTEND_PACKAGE__`

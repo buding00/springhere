@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -93,19 +94,78 @@ func TestRunLocalDryRunAndCommit(t *testing.T) {
 	if !strings.Contains(string(manifest), "combination: gin-react-admin") {
 		t.Fatalf("manifest: %s", manifest)
 	}
-	compose, err := os.ReadFile(filepath.Join(target, "deployments", "docker-compose.yaml"))
+	compose, err := os.ReadFile(filepath.Join(target, "backend", "deploy", "demo", "docker-compose.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(compose), "redis:") || !strings.Contains(string(compose), "postgres:") {
-		t.Fatalf("compose missing postgres/redis: %s", compose)
+	got := string(compose)
+	if !strings.Contains(got, "redis:") || !strings.Contains(got, "postgres:") {
+		t.Fatalf("compose missing postgres/redis: %s", got)
+	}
+	if !strings.Contains(got, "container_name: demo-postgres") || !strings.Contains(got, "container_name: demo-redis") {
+		t.Fatalf("container names: %s", got)
+	}
+	if !strings.Contains(got, "POSTGRES_USER: springhere") {
+		t.Fatalf("db user rewritten: %s", got)
+	}
+	if _, err := os.Stat(filepath.Join(target, "backend", "deploy", "demo", "nginx.conf")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(target, "deployments")); !os.IsNotExist(err) {
+		t.Fatal("root deployments/ must not exist")
+	}
+	if _, err := os.Stat(filepath.Join(target, "Makefile")); !os.IsNotExist(err) {
+		t.Fatal("root Makefile must not exist")
+	}
+	if _, err := os.Stat(filepath.Join(target, "README.md")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(target, ".github")); !os.IsNotExist(err) {
+		t.Fatal("root .github must not exist")
+	}
+	if _, err := os.Stat(filepath.Join(target, ".git")); !os.IsNotExist(err) {
+		t.Fatal("root must not have .git")
 	}
 	if _, err := os.Stat(filepath.Join(target, "backend", ".git")); !os.IsNotExist(err) {
-		t.Fatal("backend must not keep template .git")
+		t.Fatal("backend must not keep template .git when --no-git")
+	}
+	if !strings.Contains(joined, "backend/deploy/demo/docker-compose.yaml") {
+		t.Fatalf("dry-run files missing renamed compose: %v", res.Files)
 	}
 
 	if _, err := Run(ctx, cfg); err == nil {
 		t.Fatal("expected non-empty target to fail")
+	}
+}
+
+func TestGitInitBackendAndFrontend(t *testing.T) {
+	t.Parallel()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	target := filepath.Join(t.TempDir(), "demo")
+	_, err := Run(context.Background(), Config{
+		ProjectName:         "demo",
+		TargetDir:           target,
+		Backend:             "gin",
+		Frontend:            "react",
+		Module:              "github.com/acme/demo",
+		Source:              "auto",
+		BackendTemplateDir:  testdata(t, "backend"),
+		FrontendTemplateDir: testdata(t, "frontend"),
+		Stdout:              &bytes.Buffer{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(target, ".git")); !os.IsNotExist(err) {
+		t.Fatal("root must not have .git")
+	}
+	if st, err := os.Stat(filepath.Join(target, "backend", ".git")); err != nil || !st.IsDir() {
+		t.Fatalf("backend .git: %v", err)
+	}
+	if st, err := os.Stat(filepath.Join(target, "frontend", ".git")); err != nil || !st.IsDir() {
+		t.Fatalf("frontend .git: %v", err)
 	}
 }
 

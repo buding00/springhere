@@ -81,26 +81,25 @@ springhere new my-app --yes --module github.com/acme/my-app --dry-run
 
 ```text
 my-app/
-├── backend/              Gin 服务
+├── backend/              Gin 服务（含 deploy/<项目名>/ 下的 Compose 与 Nginx）
 ├── frontend/             React 管理端
-├── deployments/          PostgreSQL、Redis、Nginx
-├── Makefile
 ├── README.md
 └── .springhere.yaml      记录这次用了哪份模板
 ```
 
-默认会在项目根执行 `git init`（只要一个 Git 仓库）。不想初始化就加 `--no-git`。
+默认会在 `backend/` 和 `frontend/` 里分别执行 `git init`，根目录没有 Git 仓库。不想初始化就加 `--no-git`。
 
-SpringHere 生成时不会替你装依赖。进入项目后，`make up` 会启动数据库并执行 `go mod tidy`，`make frontend` 会执行 `pnpm install`。
+SpringHere 生成时不会替你装依赖。进入项目后按生成结果里的 `README.md` 启动 PostgreSQL / Redis、后端和前端。
 
 ## 接下来怎么跑
 
 ```bash
 cd my-app
-make up          # 启动 PostgreSQL 和 Redis，并整理 backend 依赖
-make migrate     # 数据库迁移
-make backend     # 另开一个终端，Gin 默认 :8080
-make frontend    # 再开一个终端，React 默认 :5173，/api 代理到后端
+docker compose -f backend/deploy/my-app/docker-compose.yaml up -d
+cd backend && go mod tidy && go run ./cmd/migrate -action up
+cd backend && go run ./cmd/server -config application.yaml
+# 另开终端
+cd frontend && pnpm install && pnpm dev
 ```
 
 浏览器打开前端地址，用后端文档里的管理员账号登录。更完整的说明在生成项目的 `README.md`。
@@ -113,7 +112,7 @@ make frontend    # 再开一个终端，React 默认 :5173，/api 代理到后�
 | `--module` | 无 | Go module 路径，后端必填 |
 | `--source` | `auto` | `auto`、`github` 或 `gitee` |
 | `--dry-run` | 关 | 只打印文件列表，不写磁盘 |
-| `--no-git` | 关 | 不在项目根执行 `git init` |
+| `--no-git` | 关 | 不在 backend / frontend 执行 `git init` |
 | `--output` | `./<项目名>` | 输出目录 |
 
 第一版后端只能是 `gin`，前端只能是 `react`（也是默认值）。

@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: springhere-postgres
+    environment:
+      POSTGRES_USER: springhere
+      POSTGRES_PASSWORD: springhere
+      POSTGRES_DB: springhere
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:8-alpine
+    container_name: springhere-redis
+    ports:
+      - "6379:6379"
