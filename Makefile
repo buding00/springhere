@@ -1,5 +1,11 @@
 GO ?= go
 BIN ?= bin/springhere
+# 可选：make build VERSION=0.1.0  与 GitHub Release 的 ldflags 一致
+VERSION ?=
+LDFLAGS := -s -w
+ifneq ($(VERSION),)
+LDFLAGS += -X github.com/buding00/springhere/internal/version.Version=$(VERSION)
+endif
 
 .PHONY: help build test vet fmt run-help
 
@@ -11,7 +17,7 @@ help:
 
 build:
 	mkdir -p bin
-	$(GO) build -o $(BIN) ./cmd/springhere
+	$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/springhere
 
 test:
 	$(GO) test ./...

@@ -12,6 +12,21 @@
 
 ## 安装
 
+到 [GitHub Releases](https://github.com/buding00/springhere/releases) 下载当前系统的包，解压后把 `springhere` 放到 `PATH` 里。资产名形如 `springhere_v0.1.0_darwin_arm64.tar.gz`。
+
+已经装过之后，用 CLI 自己更新（只从 GitHub Release 下载，不在本机编译，也不走 Gitee）：
+
+```bash
+springhere update --check
+springhere update
+springhere update --yes
+springhere update --version v0.1.0
+```
+
+非终端里真正下载安装必须加 `--yes`。已是最新版时不加也可以。
+
+开发者也可以从源码安装：
+
 ```bash
 git clone https://github.com/buding00/springhere.git
 cd springhere
@@ -25,7 +40,7 @@ springhere version
 springhere new --help
 ```
 
-如果 `springhere` 找不到，把 Go 的 `bin` 目录加进 `PATH`（一般是 `$(go env GOPATH)/bin`）。也可以不安装，在本仓库里执行 `go run ./cmd/springhere`。
+如果 `springhere` 找不到，把可执行文件所在目录加进 `PATH`（`go install` 一般是 `$(go env GOPATH)/bin`）。也可以不安装，在本仓库里执行 `go run ./cmd/springhere`。
 
 ## 创建项目
 
@@ -122,5 +137,7 @@ springhere new demo --yes --module github.com/acme/demo \
   --backend-template-dir ../springhere-gin-server \
   --frontend-template-dir ../springhere-react-admin
 ```
+
+发布一版给 `springhere update` 用：把 `internal/version/version.go` 改成目标版本（例如 `0.1.0`），打 **不可变** tag `v0.1.0` 并推到 GitHub。`.github/workflows/release.yml` 会交叉编译并挂到该 tag 的 GitHub Release。tag 已在但 Release 丢了：Actions 里手动跑 Release 工作流，填同一个 tag。不要 `git tag -f` 改已经发出去的 tag。
 
 设计说明见 [docs/CLI实施方案最终.md](docs/CLI实施方案最终.md)。

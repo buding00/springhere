@@ -16,8 +16,25 @@ func TestHelp(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := stdout.String()
-	if !strings.Contains(out, "springhere") || !strings.Contains(out, "new") {
+	if !strings.Contains(out, "springhere") || !strings.Contains(out, "new") || !strings.Contains(out, "update") {
 		t.Fatalf("help: %s", out)
+	}
+}
+
+func TestUpdateHelp(t *testing.T) {
+	t.Parallel()
+	stdout := &bytes.Buffer{}
+	cmd := NewRoot(bytes.NewReader(nil), stdout, &bytes.Buffer{})
+	cmd.SetArgs([]string{"update", "--help"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "--check") || !strings.Contains(out, "--version") || !strings.Contains(out, "--yes") {
+		t.Fatalf("update help: %s", out)
+	}
+	if strings.Contains(out, "--source") {
+		t.Fatalf("update must not take --source: %s", out)
 	}
 }
 

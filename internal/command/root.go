@@ -29,11 +29,12 @@ func NewRoot(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	cmd.SetErr(stderr)
 	cmd.SetVersionTemplate("springhere {{.Version}}\n")
 	cmd.AddCommand(newNewCommand(stdout))
+	cmd.AddCommand(newUpdateCommand(stdout))
 	cmd.AddCommand(&cobra.Command{
 		Use:   "version",
 		Short: "打印版本",
 		Run: func(c *cobra.Command, args []string) {
-			_, _ = fmt.Fprintf(stdout, "springhere %s\n", version.Version)
+			_, _ = fmt.Fprintf(stdout, "springhere %s\n", version.Display())
 		},
 	})
 	return cmd

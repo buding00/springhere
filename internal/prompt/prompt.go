@@ -24,6 +24,15 @@ func Interactive() bool {
 	return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
 }
 
+func Confirm(message string, def bool) (bool, error) {
+	var ok bool
+	err := survey.AskOne(&survey.Confirm{Message: message, Default: def}, &ok)
+	if err != nil {
+		return false, clierr.Usage("已取消")
+	}
+	return ok, nil
+}
+
 func Ask(reg *registry.Registry, in Answers, skipSource bool) (Answers, error) {
 	out := in
 	if out.Backend == "" {

@@ -1,0 +1,138 @@
+# 推送 vX.Y.Z tag（或在 Actions 里手动指定已有 tag）时交叉编译，
+# 把各平台二进制挂到该 tag 的 GitHub Release 上。
+# springhere update 只下载这些附件，不在用户机器上编译。
+#
+# 预发布 tag（含连字符，例如 v0.2.0-rc.1）不会自动发 Release。
+# tag 已存在但 Release 丢了：Actions → Release → Run workflow，填 tag。
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "已存在的 tag，例如 v0.1.0"
+        required: true
+        type: string
+
+# 同一 tag 不要并行传两套包。不要 cancel-in-progress，避免传一半被掐掉。
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test
+        run: go test ./...
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_INPUT: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          if [ "${GITHUB_EVENT_NAME}" = workflow_dispatch ]; then
+            TAG="${TAG_INPUT}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          TAG="${TAG#refs/tags/}"
+          case "$TAG" in
+            v*) ;;
+            *) TAG="v${TAG}" ;;
+          esac
+
+          # 只自动发布纯 vMAJOR.MINOR.PATCH
+          if ! echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "跳过非稳定 tag: $TAG（只自动发布 vX.Y.Z）"
+            exit 0
+          fi
+
+          VERSION="${TAG#v}"
+          echo "发布 $TAG （二进制版本 $VERSION）"
+
+          if ! command -v zip >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y zip
+          fi
+
+          mkdir -p dist
+
+          build() {
+            local goos="$1"
+            local goarch="$2"
+            local tmp out pkg
+            tmp="$(mktemp -d)"
+            if [ "$goos" = windows ]; then
+              out="springhere.exe"
+              pkg="springhere_${TAG}_${goos}_${goarch}.zip"
+            else
+              out="springhere"
+              pkg="springhere_${TAG}_${goos}_${goarch}.tar.gz"
+            fi
+
+            echo "编译 ${goos}/${goarch}"
+            CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build -trimpath \
+              -ldflags "-s -w -X github.com/buding00/springhere/internal/version.Version=${VERSION}" \
+              -o "${tmp}/${out}" ./cmd/springhere
+
+            if [ "$goos" = windows ]; then
+              (cd "$tmp" && zip -q "${GITHUB_WORKSPACE}/dist/${pkg}" "$out")
+            else
+              tar -C "$tmp" -czf "${GITHUB_WORKSPACE}/dist/${pkg}" "$out"
+            fi
+            rm -rf "$tmp"
+          }
+
+          build darwin amd64
+          build darwin arm64
+          build linux amd64
+          build linux arm64
+          build windows amd64
+
+          (
+            cd dist
+            sha256sum springhere_* > checksums.txt
+          )
+          ls -l dist
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG 已存在，覆盖上传资产"
+          else
+            gh release create "$TAG" --title "$TAG" --verify-tag --generate-notes
+          fi
+          gh release upload "$TAG" dist/* --clobber
