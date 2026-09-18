@@ -47,6 +47,9 @@ func rewriteGoModule(root, newModule string) (oldModule string, err error) {
 	if err := rewriteGoImports(root, oldModule, newModule); err != nil {
 		return "", err
 	}
+	if err := patchFile(filepath.Join(root, "AGENTS.md"), oldModule, newModule); err != nil {
+		return "", err
+	}
 	return oldModule, nil
 }
 
@@ -119,7 +122,7 @@ func leftoverGoModule(root, oldModule string) error {
 			return err
 		}
 		name := d.Name()
-		if name != "go.mod" && !strings.HasSuffix(name, ".go") {
+		if name != "go.mod" && name != "AGENTS.md" && !strings.HasSuffix(name, ".go") {
 			return nil
 		}
 		data, err := os.ReadFile(path)

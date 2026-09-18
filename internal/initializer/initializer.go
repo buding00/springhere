@@ -135,8 +135,10 @@ func Run(ctx context.Context, cfg Config) (*Result, error) {
 	}
 	defer func() { _ = os.RemoveAll(staging) }()
 
-	backendRoot := filepath.Join(staging, "backend")
-	frontendRoot := filepath.Join(staging, "frontend")
+	backendDir := componentDir(cfg.ProjectName, "backend")
+	frontendDir := componentDir(cfg.ProjectName, "frontend")
+	backendRoot := filepath.Join(staging, backendDir)
+	frontendRoot := filepath.Join(staging, frontendDir)
 	if err := os.MkdirAll(backendRoot, 0o755); err != nil {
 		return nil, err
 	}
@@ -181,6 +183,8 @@ func Run(ctx context.Context, cfg Config) (*Result, error) {
 
 	rootFiles, err := writeCombination(staging, combo.ID, map[string]string{
 		"__PROJECT_NAME__":     cfg.ProjectName,
+		"__BACKEND_DIR__":      backendDir,
+		"__FRONTEND_DIR__":     frontendDir,
 		"__BACKEND_MODULE__":   cfg.Module,
 		"__FRONTEND_PACKAGE__": cfg.FrontendPackage,
 	})
@@ -194,10 +198,10 @@ func Run(ctx context.Context, cfg Config) (*Result, error) {
 
 	var all []string
 	for _, f := range bFiles {
-		all = append(all, "backend/"+f)
+		all = append(all, backendDir+"/"+f)
 	}
 	for _, f := range fFiles {
-		all = append(all, "frontend/"+f)
+		all = append(all, frontendDir+"/"+f)
 	}
 	all = append(all, rootFiles...)
 	all = append(all, ".springhere.yaml")
@@ -225,7 +229,7 @@ func Run(ctx context.Context, cfg Config) (*Result, error) {
 	}
 
 	if !cfg.NoGit {
-		for _, name := range []string{"backend", "frontend"} {
+		for _, name := range []string{backendDir, frontendDir} {
 			dir := filepath.Join(cfg.TargetDir, name)
 			if err := gitInit(dir); err != nil {
 				fmt.Fprintf(cfg.Stdout, "警告：%s git init 失败（项目已生成）: %v\n", name, err)
@@ -292,6 +296,10 @@ func writeCombination(dest, id string, tokens map[string]string) ([]string, erro
 	}
 	sort.Strings(files)
 	return files, nil
+}
+
+func componentDir(project, kind string) string {
+	return project + "_" + kind
 }
 
 func gitInit(dir string) error {

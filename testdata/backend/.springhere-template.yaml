@@ -8,6 +8,8 @@ payload:
     - deploy
     - go.mod
     - application.yaml
+    - AGENTS.md
+    - LICENSE
 transforms:
   - kind: go_module
     value_from: backend_module

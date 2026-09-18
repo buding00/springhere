@@ -30,6 +30,9 @@ func TestRewriteDeployStack(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(src, "nginx.conf"), []byte("server {}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("docker compose -f deploy/springhere/docker-compose.yaml up -d\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	err := rewriteDeployStack(root, contract.Transform{
 		Kind: "deploy_stack",
@@ -57,5 +60,12 @@ func TestRewriteDeployStack(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, "deploy", "springhere")); !os.IsNotExist(err) {
 		t.Fatal("old deploy dir still exists")
+	}
+	agents, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(agents), "deploy/demo/docker-compose.yaml") {
+		t.Fatalf("agents: %s", agents)
 	}
 }

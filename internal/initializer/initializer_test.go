@@ -48,7 +48,7 @@ func TestRunLocalDryRunAndCommit(t *testing.T) {
 		t.Fatal("dry-run must not create target")
 	}
 	joined := strings.Join(res.Files, "\n")
-	if !strings.Contains(joined, "backend/go.mod") || !strings.Contains(joined, "frontend/package.json") {
+	if !strings.Contains(joined, "demo_backend/go.mod") || !strings.Contains(joined, "demo_frontend/package.json") {
 		t.Fatalf("files=%v", res.Files)
 	}
 
@@ -56,7 +56,7 @@ func TestRunLocalDryRunAndCommit(t *testing.T) {
 	if _, err := Run(ctx, cfg); err != nil {
 		t.Fatal(err)
 	}
-	mod, err := os.ReadFile(filepath.Join(target, "backend", "go.mod"))
+	mod, err := os.ReadFile(filepath.Join(target, "demo_backend", "go.mod"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,21 +66,46 @@ func TestRunLocalDryRunAndCommit(t *testing.T) {
 	if strings.Contains(string(mod), "example.com/source-backend") {
 		t.Fatal("source module leftover in go.mod")
 	}
-	mainGo, err := os.ReadFile(filepath.Join(target, "backend", "cmd", "main.go"))
+	mainGo, err := os.ReadFile(filepath.Join(target, "demo_backend", "cmd", "main.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(mainGo), `github.com/acme/demo/internal/pkg`) {
 		t.Fatalf("imports not rewritten: %s", mainGo)
 	}
-	pkgJSON, err := os.ReadFile(filepath.Join(target, "frontend", "package.json"))
+	pkgJSON, err := os.ReadFile(filepath.Join(target, "demo_frontend", "package.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(pkgJSON), `"name": "demo-admin"`) {
 		t.Fatalf("package.json: %s", pkgJSON)
 	}
-	appYAML, err := os.ReadFile(filepath.Join(target, "backend", "application.yaml"))
+	brand, err := os.ReadFile(filepath.Join(target, "demo_frontend", "src", "config", "index.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	brandBody := string(brand)
+	if strings.Contains(brandBody, "SpringHere") {
+		t.Fatalf("frontend brand leftover: %s", brandBody)
+	}
+	if !strings.Contains(brandBody, `name: "demo"`) || !strings.Contains(brandBody, `mark: "D"`) {
+		t.Fatalf("frontend brand: %s", brandBody)
+	}
+	html, err := os.ReadFile(filepath.Join(target, "demo_frontend", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(html), "demo 管理服务") {
+		t.Fatalf("index.html: %s", html)
+	}
+	frontAgents, err := os.ReadFile(filepath.Join(target, "demo_frontend", "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(frontAgents), "SpringHere") || !strings.Contains(string(frontAgents), "demo React Admin") {
+		t.Fatalf("frontend AGENTS.md: %s", frontAgents)
+	}
+	appYAML, err := os.ReadFile(filepath.Join(target, "demo_backend", "application.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +119,7 @@ func TestRunLocalDryRunAndCommit(t *testing.T) {
 	if !strings.Contains(string(manifest), "combination: gin-react-admin") {
 		t.Fatalf("manifest: %s", manifest)
 	}
-	compose, err := os.ReadFile(filepath.Join(target, "backend", "deploy", "demo", "docker-compose.yaml"))
+	compose, err := os.ReadFile(filepath.Join(target, "demo_backend", "deploy", "demo", "docker-compose.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,8 +133,40 @@ func TestRunLocalDryRunAndCommit(t *testing.T) {
 	if !strings.Contains(got, "POSTGRES_USER: springhere") {
 		t.Fatalf("db user rewritten: %s", got)
 	}
-	if _, err := os.Stat(filepath.Join(target, "backend", "deploy", "demo", "nginx.conf")); err != nil {
+	backAgents, err := os.ReadFile(filepath.Join(target, "demo_backend", "AGENTS.md"))
+	if err != nil {
 		t.Fatal(err)
+	}
+	agentsBody := string(backAgents)
+	if !strings.Contains(agentsBody, "github.com/acme/demo") {
+		t.Fatalf("backend AGENTS.md module: %s", agentsBody)
+	}
+	if strings.Contains(agentsBody, "example.com/source-backend") {
+		t.Fatalf("backend AGENTS.md leftover module: %s", agentsBody)
+	}
+	if !strings.Contains(agentsBody, "deploy/demo/docker-compose.yaml") {
+		t.Fatalf("backend AGENTS.md compose path: %s", agentsBody)
+	}
+	if strings.Contains(agentsBody, "deploy/springhere/") {
+		t.Fatalf("backend AGENTS.md leftover deploy path: %s", agentsBody)
+	}
+	if _, err := os.Stat(filepath.Join(target, "demo_backend", "deploy", "demo", "nginx.conf")); err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range []string{"demo_backend", "demo_frontend"} {
+		body, err := os.ReadFile(filepath.Join(target, dir, "LICENSE"))
+		if err != nil {
+			t.Fatalf("%s LICENSE: %v", dir, err)
+		}
+		if !strings.Contains(string(body), "MIT License") {
+			t.Fatalf("%s LICENSE: %s", dir, body)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(target, "backend")); !os.IsNotExist(err) {
+		t.Fatal("plain backend/ must not exist")
+	}
+	if _, err := os.Stat(filepath.Join(target, "frontend")); !os.IsNotExist(err) {
+		t.Fatal("plain frontend/ must not exist")
 	}
 	if _, err := os.Stat(filepath.Join(target, "deployments")); !os.IsNotExist(err) {
 		t.Fatal("root deployments/ must not exist")
@@ -126,11 +183,18 @@ func TestRunLocalDryRunAndCommit(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(target, ".git")); !os.IsNotExist(err) {
 		t.Fatal("root must not have .git")
 	}
-	if _, err := os.Stat(filepath.Join(target, "backend", ".git")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(target, "demo_backend", ".git")); !os.IsNotExist(err) {
 		t.Fatal("backend must not keep template .git when --no-git")
 	}
-	if !strings.Contains(joined, "backend/deploy/demo/docker-compose.yaml") {
+	if !strings.Contains(joined, "demo_backend/deploy/demo/docker-compose.yaml") {
 		t.Fatalf("dry-run files missing renamed compose: %v", res.Files)
+	}
+	readme, err := os.ReadFile(filepath.Join(target, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "demo_backend") || !strings.Contains(string(readme), "demo_frontend") {
+		t.Fatalf("root README dirs: %s", readme)
 	}
 
 	if _, err := Run(ctx, cfg); err == nil {
@@ -161,10 +225,10 @@ func TestGitInitBackendAndFrontend(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(target, ".git")); !os.IsNotExist(err) {
 		t.Fatal("root must not have .git")
 	}
-	if st, err := os.Stat(filepath.Join(target, "backend", ".git")); err != nil || !st.IsDir() {
+	if st, err := os.Stat(filepath.Join(target, "demo_backend", ".git")); err != nil || !st.IsDir() {
 		t.Fatalf("backend .git: %v", err)
 	}
-	if st, err := os.Stat(filepath.Join(target, "frontend", ".git")); err != nil || !st.IsDir() {
+	if st, err := os.Stat(filepath.Join(target, "demo_frontend", ".git")); err != nil || !st.IsDir() {
 		t.Fatalf("frontend .git: %v", err)
 	}
 }

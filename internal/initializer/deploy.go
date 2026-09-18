@@ -58,7 +58,7 @@ func rewriteDeployStack(root string, t contract.Transform, project string) error
 	if from != project && changed == 0 {
 		return clierr.Contract("deploy_stack 未在 compose 中找到容器名前缀 "+from+"-", nil)
 	}
-	return nil
+	return patchFile(filepath.Join(root, "AGENTS.md"), filepath.ToSlash(filepath.Join(t.Path, from)), filepath.ToSlash(filepath.Join(t.Path, project)))
 }
 
 func rewriteComposeFile(path, from, to string) (int, error) {

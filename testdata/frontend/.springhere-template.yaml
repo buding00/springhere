@@ -5,8 +5,15 @@ payload:
   include:
     - src
     - package.json
+    - index.html
+    - AGENTS.md
+    - LICENSE
 transforms:
   - kind: json_string
     path: package.json
     key: name
     value_from: frontend_package_name
+  - kind: app_brand
+    path: src/config/index.ts
+    from: SpringHere
+    value_from: project_name

@@ -56,6 +56,10 @@ func applyTransforms(root string, transforms []contract.Transform, v values) err
 			if err := rewriteDeployStack(root, t, val); err != nil {
 				return err
 			}
+		case "app_brand":
+			if err := rewriteAppBrand(root, t, val); err != nil {
+				return err
+			}
 		default:
 			return clierr.Contract("未知 transform kind: "+t.Kind, nil)
 		}

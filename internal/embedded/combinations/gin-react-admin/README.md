@@ -5,11 +5,11 @@
 ## 目录
 
 ```text
-backend/      Gin 服务，PostgreSQL / Redis / Nginx 编排在 backend/deploy/__PROJECT_NAME__/
-frontend/     React 管理端
+__BACKEND_DIR__/      Gin 服务，PostgreSQL / Redis / Nginx 编排在 __BACKEND_DIR__/deploy/__PROJECT_NAME__/
+__FRONTEND_DIR__/     React 管理端
 ```
 
-`backend/` 与 `frontend/` 各自是独立的 Git 仓库。根目录没有 `.git`。
+`__BACKEND_DIR__/` 与 `__FRONTEND_DIR__/` 各自是独立的 Git 仓库。根目录没有 `.git`。
 
 ## 前置条件
 
@@ -22,16 +22,16 @@ frontend/     React 管理端
 
 ```bash
 # 1. 启动 PostgreSQL 和 Redis
-docker compose -f backend/deploy/__PROJECT_NAME__/docker-compose.yaml up -d
+docker compose -f __BACKEND_DIR__/deploy/__PROJECT_NAME__/docker-compose.yaml up -d
 
 # 2. 后端：整理依赖、迁移并启动
-cd backend
+cd __BACKEND_DIR__
 go mod tidy
 go run ./cmd/migrate -action up
 go run ./cmd/server -config application.yaml
 
 # 3. 另开终端启动前端（Vite 把 /api 代理到 localhost:8080）
-cd frontend
+cd __FRONTEND_DIR__
 pnpm install
 pnpm dev
 ```
@@ -42,9 +42,9 @@ pnpm dev
 
 ## 配置
 
-- 后端配置：`backend/application.yaml`，也可用环境变量覆盖（见 `backend/.env.example`）
-- 前端代理：`frontend/.env.example` 中的 `VITE_API_PROXY_TARGET`
-- Compose / Nginx：`backend/deploy/__PROJECT_NAME__/`
+- 后端配置：`__BACKEND_DIR__/application.yaml`，也可用环境变量覆盖（见 `__BACKEND_DIR__/.env.example`）
+- 前端代理：`__FRONTEND_DIR__/.env.example` 中的 `VITE_API_PROXY_TARGET`
+- Compose / Nginx：`__BACKEND_DIR__/deploy/__PROJECT_NAME__/`
 
 不要把密钥提交进 Git。生产环境必须替换 JWT Secret，并打开 Refresh Cookie 的 `Secure`。
 

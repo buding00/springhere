@@ -69,6 +69,23 @@ transforms:
 	}
 }
 
+func TestParseAppBrandRequiresFrom(t *testing.T) {
+	t.Parallel()
+	_, err := Parse([]byte(`
+schema_version: 1
+component: frontend
+payload:
+  include: [src]
+transforms:
+  - kind: app_brand
+    path: src/config/index.ts
+    value_from: project_name
+`))
+	if err == nil {
+		t.Fatal("expected app_brand without from to fail")
+	}
+}
+
 func TestParseOK(t *testing.T) {
 	t.Parallel()
 	c, err := Parse([]byte(`

@@ -140,7 +140,7 @@ func newNewCommand(stdout io.Writer) *cobra.Command {
 	cmd.Flags().StringVar(&frontendDir, "frontend-template-dir", "", "本地前端模板目录")
 	cmd.Flags().StringVar(&output, "output", "", "输出目录（默认 ./<project-name>）")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "只打印将创建的文件，不写入目标")
-	cmd.Flags().BoolVar(&noGit, "no-git", false, "不在 backend/frontend 执行 git init")
+	cmd.Flags().BoolVar(&noGit, "no-git", false, "不在 <项目名>_backend / <项目名>_frontend 执行 git init")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "跳过交互确认（非 TTY 必须）")
 	return cmd
 }

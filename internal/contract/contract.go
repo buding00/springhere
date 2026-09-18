@@ -82,9 +82,9 @@ func (c *Contract) validate() error {
 	}
 	for _, t := range c.Transforms {
 		switch t.Kind {
-		case "go_module", "json_string", "yaml_scalar", "deploy_stack":
+		case "go_module", "json_string", "yaml_scalar", "deploy_stack", "app_brand":
 		default:
-			return clierr.Contract("未知 transform kind: "+t.Kind+"（支持 go_module、json_string、yaml_scalar、deploy_stack）", nil)
+			return clierr.Contract("未知 transform kind: "+t.Kind+"（支持 go_module、json_string、yaml_scalar、deploy_stack、app_brand）", nil)
 		}
 		if t.Kind != "go_module" && strings.TrimSpace(t.Path) == "" {
 			return clierr.Contract("transform "+t.Kind+" 缺少 path", nil)
@@ -95,6 +95,11 @@ func (c *Contract) validate() error {
 		if t.Kind == "deploy_stack" {
 			if err := checkDirName(t.From); err != nil {
 				return clierr.Contract("transform deploy_stack 的 from 非法: "+t.From, err)
+			}
+		}
+		if t.Kind == "app_brand" {
+			if err := checkDirName(t.From); err != nil {
+				return clierr.Contract("transform app_brand 的 from 非法: "+t.From, err)
 			}
 		}
 		if t.ValueFrom == "" {
